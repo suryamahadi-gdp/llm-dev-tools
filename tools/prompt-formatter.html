@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prompt Formatter</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/handlebars.js/4.7.7/handlebars.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.3.0/papaparse.min.js"></script>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+            min-height: 100vh;
+            box-sizing: border-box;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-top: 0;
+        }
+        .container {
+            display: flex;
+            gap: 20px;
+            height: calc(100vh - 100px);
+        }
+        .left-panel, .right-panel {
+            flex: 1;
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+        }
+        textarea {
+            width: 100%;
+            flex-grow: 1;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 8px;
+            resize: none;
+        }
+        select, button, input {
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+        button {
+            background-color: #0070f3;
+            color: white;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #0051a2;
+        }
+        #chatList {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .chat-item {
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 10px;
+        }
+        .chat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .chat-item select {
+            width: 100px; /* Fixed width for role select */
+            margin-right: 10px;
+        }
+        .chat-item textarea {
+            width: calc(100% - 20px); /* Full width minus padding */
+            height: 80px;
+            resize: vertical;
+            margin-top: 10px; /* Add some space between select and textarea */
+        }
+        .delete-btn {
+            background-color: #ff4d4f;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .delete-btn:hover {
+            background-color: #ff7875;
+        }
+        .template-selection {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        .template-selection select {
+            flex-grow: 1;
+        }
+        .csv-input {
+            margin-bottom: 10px;
+        }
+        #csvPreview {
+            max-height: 200px;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+        }
+        #generatedPrompts {
+            flex-grow: 1;
+            overflow-y: auto;
+            overflow-x: hidden; /* Prevent horizontal scrolling */
+            margin-top: 10px;
+            width: 100%; /* Ensure it takes full width of its parent */
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        .prompt-container {
+            margin-bottom: 20px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 20px;
+            width: 100%; /* Ensure the container takes full width */
+        }
+        .prompt-container textarea {
+            width: 100%;
+            height: 150px;
+            margin-bottom: 10px;
+            resize: vertical;
+            box-sizing: border-box; /* Include padding and border in the element's total width and height */
+        }
+        .prompt-number {
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        .prompt-container:last-child {
+            border-bottom: none;
+        }
+        .copy-btn {
+            background-color: #52c41a;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .copy-btn:hover {
+            background-color: #73d13d;
+        }
+        .right-panel {
+            /* ... (other styles remain unchanged) ... */
+            overflow: hidden; /* Prevent scrolling in the right panel itself */
+        }
+    </style>
+</head>
+<body>
+    <h1>Prompt Formatter</h1>
+    
+    <div class="container">
+        <div class="left-panel">
+            <h2>Template</h2>
+            <div class="template-selection">
+                <select id="templateSelect" onchange="loadTemplate()">
+                    <option value="custom">Custom</option>
+                    <option value="default" selected>Default</option>
+                    <option value="chatgpt">ChatGPT</option>
+                    <option value="anthropic">Anthropic</option>
+                </select>
+                <button onclick="saveTemplate()">Save</button>
+            </div>
+            <textarea id="promptTemplate" placeholder="Enter your prompt template using Handlebars syntax"></textarea>
+            
+            <h2>Messages</h2>
+            <div id="chatList"></div>
+            <button onclick="addChatItem()">Add Message</button>
+            
+            <h2>CSV Input</h2>
+            <input type="file" id="csvFile" accept=".csv" class="csv-input" onchange="loadCSV()">
+            <div id="csvPreview"></div>
+        </div>
+        
+        <div class="right-panel">
+            <h2>Generated Prompts</h2>
+            <div class="button-group">
+                <button onclick="generatePrompts()">Generate Prompts</button>
+                <button onclick="exportToCSV()">Export to CSV</button>
+            </div>
+            <div id="generatedPrompts"></div>
+        </div>
+    </div>
+
+    <script>
+        Handlebars.registerHelper('ifSystem', function(options) {
+            return (this.role === 'system') ? options.fn(this) : options.inverse(this);
+        });
+        Handlebars.registerHelper('ifUser', function(options) {
+            return (this.role === 'user') ? options.fn(this) : options.inverse(this);
+        });
+        Handlebars.registerHelper('ifAssistant', function(options) {
+            return (this.role === 'assistant') ? options.fn(this) : options.inverse(this);
+        });
+
+        const templates = {
+            default: `{{#each messages}}{{#ifSystem}}<|system|>\n{{content}}<|end|>\n{{/ifSystem}}{{#ifUser}}<|user|>\n{{content}}<|end|>\n<|assistant|>\n{{/ifUser}}{{#ifAssistant}}{{content}}<|end|>\n{{/ifAssistant}}{{/each}}`,
+            chatgpt: `{{#each messages}}{{#ifSystem}}System: {{content}}\n\n{{/ifSystem}}{{#ifUser}}Human: {{content}}\n\nAssistant: {{/ifUser}}{{#ifAssistant}}{{content}}\n\n{{/ifAssistant}}{{/each}}`,
+            anthropic: `{{#each messages}}{{#ifSystem}}Human: {{content}}\n\nAssistant: I understand. I will follow those instructions.\n\n{{/ifSystem}}{{#ifUser}}Human: {{content}}\n\nAssistant: {{/ifUser}}{{#ifAssistant}}{{content}}\n\n{{/ifAssistant}}{{/each}}`
+        };
+
+        function loadTemplate() {
+            const select = document.getElementById('templateSelect');
+            const templateTextarea = document.getElementById('promptTemplate');
+            
+            if (select.value === 'custom') {
+                templateTextarea.value = localStorage.getItem('customTemplate') || '';
+            } else {
+                templateTextarea.value = templates[select.value];
+            }
+        }
+
+        function saveTemplate() {
+            const select = document.getElementById('templateSelect');
+            const templateTextarea = document.getElementById('promptTemplate');
+            
+            if (select.value === 'custom') {
+                localStorage.setItem('customTemplate', templateTextarea.value);
+                alert('Custom template saved!');
+            } else {
+                alert('You can only save custom templates.');
+            }
+        }
+
+        function createChatItem(role = 'user', content = '') {
+            const chatList = document.getElementById('chatList');
+            const newItem = document.createElement('div');
+            newItem.className = 'chat-item';
+            newItem.innerHTML = `
+                <div class="chat-header">
+                    <select class="roleSelect">
+                        <option value="system">System</option>
+                        <option value="user">User</option>
+                        <option value="assistant">Assistant</option>
+                    </select>
+                    <button class="delete-btn" onclick="deleteChatItem(this)">Delete</button>
+                </div>
+                <textarea class="roleInput" placeholder="Enter message content">${content}</textarea>
+            `;
+            chatList.appendChild(newItem);
+            newItem.querySelector('.roleSelect').value = role;
+        }
+
+        function deleteChatItem(button) {
+            button.closest('.chat-item').remove();
+        }
+
+        let csvData = [];
+
+        function loadCSV() {
+            const fileInput = document.getElementById('csvFile');
+            const file = fileInput.files[0];
+            
+            Papa.parse(file, {
+                complete: function(results) {
+                    csvData = results.data;
+                    displayCSVPreview();
+                }
+            });
+        }
+
+        function displayCSVPreview() {
+            const preview = document.getElementById('csvPreview');
+            preview.innerHTML = '';
+            
+            if (csvData.length > 0) {
+                const headers = csvData[0];
+                const previewTable = document.createElement('table');
+                
+                // Create header row
+                const headerRow = document.createElement('tr');
+                headers.forEach(header => {
+                    const th = document.createElement('th');
+                    th.textContent = header;
+                    headerRow.appendChild(th);
+                });
+                previewTable.appendChild(headerRow);
+                
+                // Create data rows (up to 5)
+                for (let i = 1; i < Math.min(csvData.length, 6); i++) {
+                    const row = document.createElement('tr');
+                    csvData[i].forEach(cell => {
+                        const td = document.createElement('td');
+                        td.textContent = cell;
+                        row.appendChild(td);
+                    });
+                    previewTable.appendChild(row);
+                }
+                
+                preview.appendChild(previewTable);
+            }
+        }
+
+        let generatedPrompts = [];
+        let promptCounter = 0;
+
+        function generatePrompts() {
+            const template = document.getElementById('promptTemplate').value;
+            const compiledTemplate = Handlebars.compile(template);
+            
+            const chatItems = document.querySelectorAll('.chat-item');
+            const messageTemplates = [];
+
+            chatItems.forEach((item) => {
+                const role = item.querySelector('.roleSelect').value;
+                const content = item.querySelector('.roleInput').value;
+                messageTemplates.push({ role, content });
+            });
+
+            const generatedPromptsDiv = document.getElementById('generatedPrompts');
+            generatedPromptsDiv.innerHTML = '';
+            generatedPrompts = [];
+            promptCounter = 0;  // Reset counter before generating new prompts
+
+            if (csvData.length > 1) {
+                // CSV data is available, generate multiple prompts
+                const headers = csvData[0];
+                
+                for (let i = 1; i < csvData.length; i++) {
+                    const rowData = {};
+                    headers.forEach((header, index) => {
+                        rowData[header] = csvData[i][index];
+                    });
+                    
+                    const messages = messageTemplates.map(template => ({
+                        role: template.role,
+                        content: replaceVariables(template.content, rowData)
+                    }));
+                    
+                    const context = { messages };
+                    const generatedPrompt = compiledTemplate(context);
+                    
+                    generatedPrompts.push(generatedPrompt);
+                    
+                    createPromptContainer(generatedPrompt, generatedPromptsDiv);
+                }
+            } else {
+                // No CSV data, generate a single prompt without replacing placeholders
+                const messages = messageTemplates.map(template => ({
+                    role: template.role,
+                    content: template.content
+                }));
+                
+                const context = { messages };
+                const generatedPrompt = compiledTemplate(context);
+                
+                generatedPrompts.push(generatedPrompt);
+                
+                createPromptContainer(generatedPrompt, generatedPromptsDiv);
+            }
+        }
+
+        function createPromptContainer(prompt, parentElement) {
+            promptCounter++;  // Increment counter for each new prompt
+            
+            const container = document.createElement('div');
+            container.className = 'prompt-container';
+            
+            const promptNumber = document.createElement('div');
+            promptNumber.className = 'prompt-number';
+            promptNumber.textContent = `Prompt ${promptCounter}`;
+            
+            const textarea = document.createElement('textarea');
+            textarea.value = prompt;
+            textarea.readOnly = true;
+            
+            const copyButton = document.createElement('button');
+            copyButton.textContent = 'Copy to Clipboard';
+            copyButton.className = 'copy-btn';
+            copyButton.onclick = () => copyToClipboard(textarea);
+            
+            container.appendChild(promptNumber);
+            container.appendChild(textarea);
+            container.appendChild(copyButton);
+            parentElement.appendChild(container);
+        }
+
+        function copyToClipboard(textarea) {
+            textarea.select();
+            document.execCommand('copy');
+            alert('Prompt copied to clipboard!');
+        }
+
+        function exportToCSV() {
+            if (generatedPrompts.length === 0) {
+                alert('No prompts generated yet. Please generate prompts first.');
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "Generated Prompt\n";
+
+            generatedPrompts.forEach(prompt => {
+                csvContent += '"' + prompt.replace(/"/g, '""') + '"\n';
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "generated_prompts.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function replaceVariables(text, variables) {
+            return text.replace(/\{(\w+)\}/g, (match, variable) => {
+                return variables[variable] || match;
+            });
+        }
+
+        // Initialize with default template and messages
+        loadTemplate();
+        createChatItem('system', 'You are a helpful assistant.');
+        createChatItem('user', 'Hello, how can you help me today?');
+
+        function addChatItem() {
+            createChatItem('user', '');
+        }
+    </script>
+</body>
+</html>
