@@ -403,17 +403,27 @@
                 return;
             }
 
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "Generated Prompt\n";
+            if (csvData.length <= 1) {
+                alert('No CSV data loaded. Please upload a CSV file first.');
+                return;
+            }
 
-            generatedPrompts.forEach(prompt => {
-                csvContent += '"' + prompt.replace(/"/g, '""') + '"\n';
-            });
+            let csvContent = "data:text/csv;charset=utf-8,";
+            
+            // Add headers from the original CSV plus the new "generated_prompt" column
+            csvContent += csvData[0].join(',') + ',generated_prompt\n';
+
+            // Combine original CSV data with generated prompts
+            for (let i = 1; i < csvData.length && i <= generatedPrompts.length; i++) {
+                let row = csvData[i].map(cell => `"${cell.replace(/"/g, '""')}"`).join(',');
+                let generatedPrompt = `"${generatedPrompts[i-1].replace(/"/g, '""')}"`;
+                csvContent += row + ',' + generatedPrompt + '\n';
+            }
 
             const encodedUri = encodeURI(csvContent);
             const link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", "generated_prompts.csv");
+            link.setAttribute("download", "generated_prompts_with_data.csv");
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
