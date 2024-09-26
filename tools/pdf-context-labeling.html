@@ -210,10 +210,14 @@
             boundingBox.style.height = `${(bboxCoordinates.y1 - bboxCoordinates.y0) * scale}px`;
 
             coordDisplay.value = JSON.stringify({
-                x0: parseFloat(bboxCoordinates.x0.toFixed(2)),
-                y0: parseFloat(bboxCoordinates.y0.toFixed(2)),
-                x1: parseFloat(bboxCoordinates.x1.toFixed(2)),
-                y1: parseFloat(bboxCoordinates.y1.toFixed(2))
+                filename: fileInput.files[0].name,
+                page: currentPage,
+                bbox: {
+                    x0: parseFloat(bboxCoordinates.x0.toFixed(2)),
+                    y0: parseFloat(bboxCoordinates.y0.toFixed(2)),
+                    x1: parseFloat(bboxCoordinates.x1.toFixed(2)),
+                    y1: parseFloat(bboxCoordinates.y1.toFixed(2))
+                }
             }, null, 2);
         }
 
